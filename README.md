@@ -14,6 +14,17 @@ The program interacts with [AwanLLM API](https://www.awanllm.com/) for story gen
 
 Without the API key, the program is unable to generate stories. However, other functions such as image generation, video generation are still available. Modify __scenes.json__ to use the program without the API key.
 
+### Command Line Interface
+
+```
+$ python main.py -p "space dolphins and the intergalactical trade center" -m 0 -s 0
+$ python main.py -m 1
+$ python main.py -m 2
+$ python main.py -m 3
+$ python main.py -m 4
+```
+
+
 ### Python
 
 Interface AI story maker with Python code. Simply provide a prompt that follows "Write me a story about..."
