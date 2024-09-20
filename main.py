@@ -17,6 +17,7 @@ from numba import cuda
 import nltk
 import librosa
 import cv2
+import argparse
 from prompts import prompts
 from film_net import *
 
@@ -47,7 +48,7 @@ class StoryMaker:
         self.prompt = prompt
         return
 
-    def generate_scenes(self) -> None:
+    def generate_scenes(self, model, style) -> None:
         """
         This function interacts with the AwanLLM API to generate a story based on the input prompt,
         then it calls parse_story to write outputs to scenes.json.
@@ -60,12 +61,13 @@ class StoryMaker:
         secret = json.load(open('secret.json')) # load API key
         AWANLLM_API_KEY = secret['AWANLLM_API_KEY']
 
-        message = prompts.LLAMA_PROMPT2.format(prompt=self.prompt)
+        prompting = prompts.LLAMA_PROMPT[style]
+        message = prompting.format(prompt=self.prompt)
 
         url = "https://api.awanllm.com/v1/completions"
 
         payload = json.dumps({
-        "model": "Awanllm-Llama-3-8B-Dolfin",
+        "model": model,
         "prompt": message,
         "repetition_penalty": 1.1,
         "temperature": 0.8,
@@ -127,7 +129,7 @@ class StoryMaker:
         else:
             raise ValueError('The number of text2image and script do not match. Try generating the story again.')
 
-    def paint(self, pipeline, prompt, id) -> None:
+    def paint(self, pipeline, prompt, id, style=1, vertical=True) -> None:
         """
         The function creates an image by using the pipeline and prompt provided.
         The image is then saved as a png file under the name provided.
@@ -139,8 +141,12 @@ class StoryMaker:
           Returns:
             None
         """
-        STYLE_PROMPT = prompts.STYLE_PROMPT2
+        STYLE_PROMPT = prompts.STYLE_PROMPT[style]
         NEGATIVE_PROMPT = prompts.NEGATIVE_PROMPT
+
+        if vertical:
+           wid = 576
+           high = 1024
 
         image = pipeline(
                 prompt + STYLE_PROMPT,
@@ -170,6 +176,7 @@ class StoryMaker:
         """
         pipeline = DiffusionPipeline.from_pretrained("Lykon/dreamshaper-xl-1-0")
         pipeline.to("cuda")
+        pipeline.set_progress_bar_config(disable=True)
 
         scenes = json.load(open('scenes.json'))
         for i in range(len(scenes['text2image'])):
@@ -250,6 +257,7 @@ class StoryMaker:
         video_pipeline = DiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid-xt",
                                              torch_dtype=torch.float16,
                                              variant="fp16").to("cuda")
+        video_pipeline.set_progress_bar_config(disable=True)
 
         # # compile unet to speed up vid generation
         # video_pipeline.unet = torch.compile(video_pipeline.unet, mode="reduce-overhead", fullgraph=True)
@@ -286,7 +294,7 @@ class StoryMaker:
                       decode_chunk_size=8).frames[0]
             frames = frames + temp
 
-          export_to_video(frames, f'generated_video_{i}.mp4', fps=fps)
+          export_to_video(frames, f'../temp/generated_video_{i}.mp4', fps=fps)
           print(f'Video saved as generated_video_{i}.mp4')
         return None
 
@@ -356,3 +364,51 @@ class StoryMaker:
             os.remove(os.path.join('../temp/', f))
 
         return None
+    
+def am_main():
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('-p', '--prompt', type=str)
+  parser.add_argument('-o', '--output', type=str, default='../output.mp4')
+  parser.add_argument('-l', '--llm', type=str, 
+                      choices=["Meta-Llama-3.1-70B-Instruct", "Meta-Llama-3.1-8B-Instruct", "Awanllm-Llama-3-8B-Dolfin"], default="Meta-Llama-3.1-8B-Instruct")
+  parser.add_argument('-m', '--mode', type=int, choices=[0, 1, 2, 3, 4, 5])
+  parser.add_argument('-s', '--style', type=int, choices=[0, 1], default=1, help='Select prompting method')
+  parser.add_argument('--fps', type=int, default=3)
+  parser.add_argument('--testing', action='store_true')
+
+  args = parser.parse_args()
+
+  sm = StoryMaker(args.prompt)
+
+  if args.testing:
+    try: 
+      scenes = json.load(open('scenes.json'))
+      temp = {}
+      for key in scenes.keys():
+        temp[key] = scenes[key][:2]
+      with open('scenes.json', 'w', encoding='utf-8') as f:
+        json.dump(temp, f, ensure_ascii=False, indent=4)
+    except FileNotFoundError:
+        pass
+
+  if args.mode == 0:
+    sm.generate_scenes(model=args.llm, style=args.style)
+  if args.mode == 1:
+    sm.generate_images()
+  elif args.mode == 2:
+    sm.generate_speech()
+  elif args.mode == 3:
+    sm.generate_video(fps=args.fps)
+  elif args.mode == 4:
+    sm.compile_story(prior_fps=args.fps, out_path=args.output)
+  if args.mode == 5:
+    sm.generate_scenes(model=args.llm, style=args.style)
+    sm.generate_images()
+    sm.generate_video(fps=args.fps)
+    sm.compile_story(prior_fps=args.fps, out_path=args.output)
+
+  return None
+
+if __name__ == '__main__':
+  am_main()

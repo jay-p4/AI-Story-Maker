@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class prompts:
-    LLAMA_PROMPT = """
+    LLAMA_PROMPT = ["""
         <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
         You are a story writer.
@@ -33,9 +33,9 @@ class prompts:
 
         Modify the story so that it has a conclusion
         <|eot_id|><|start_header_id|>assistant<|end_header_id|>
+        """,
+        
         """
-
-    LLAMA_PROMPT2 = """
         <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
         You are a helpful assistant.
@@ -61,9 +61,10 @@ class prompts:
 
         <|eot_id|><|start_header_id|>assistant<|end_header_id|>
         """
+    ]
 
-    STYLE_PROMPT = "Masterpiece pixar nickelodeon cartoon, symmetrical, highly detailed, 8k, digital painting, oil painting, illustration, concept art, sharp focus, volumetric lighting, epic Composition"
-
-    STYLE_PROMPT2 = "analog horror, inematic film still, fictional landscapes, (intense sunlight:1.4), realist detail, brooding mood, ue5, detailed character expressions, amazing quality, wallpaper, analog film grain"
+    STYLE_PROMPT = ["Masterpiece pixar nickelodeon cartoon, symmetrical, highly detailed, 8k, digital painting, oil painting, illustration, concept art, sharp focus, volumetric lighting, epic Composition", 
+                    "analog horror, inematic film still, fictional landscapes, (intense sunlight:1.4), realist detail, brooding mood, ue5, detailed character expressions, amazing quality, wallpaper, analog film grain"
+    ]
 
     NEGATIVE_PROMPT = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
